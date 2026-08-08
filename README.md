@@ -1,0 +1,69 @@
+# Language Filter for YouTube
+
+A Chrome extension that cleans languages you don't want out of your YouTube
+home feed: it detects each video's language from its title and automatically
+clicks **"Not interested"** for you — which actually teaches YouTube's
+recommendations, not just hides the tile (though a hide-only mode exists too).
+
+Built for the "my feed is full of videos in a language I don't watch" problem.
+
+## How language detection works
+
+Two layers, fastest first:
+
+1. **Script detection (deterministic, instant, offline).** Korean, Japanese,
+   Chinese, Russian, Arabic, Hindi, Thai and Hebrew are identified by their
+   Unicode script with a ratio + dense-run heuristic, so mixed titles like
+   "[ENG SUB] 김치찌개 만들기 Kimchi Stew Recipe" still match. No model, no
+   network, no ambiguity.
+2. **Chrome's built-in Language Detector API (on-device AI, Chrome 138+).**
+   Used only for Latin-alphabet languages (Spanish, French, German,
+   Portuguese, Italian) that script analysis can't distinguish. The model
+   runs locally; nothing is sent anywhere. If unavailable, script-based
+   languages keep working.
+
+## Quick start
+
+Requires Node 24+.
+
+```bash
+npm install
+npm run build
+```
+
+`chrome://extensions` → **Developer mode** → **Load unpacked** → select
+**`dist/`**. Then click the extension icon, pick the languages to filter
+(e.g. Korean), and open youtube.com.
+
+## Usage
+
+- Configure via the toolbar popup: enable/disable, pick languages, and choose
+  the action — **"Not interested"** (default; trains the algorithm,
+  processed one tile at a time with delays) or **hide only**.
+- Runs on the **Home feed** (`youtube.com/`) only.
+- Matched tiles are logged to the DevTools console with a running count.
+- Changes in the popup apply immediately, no reload needed.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `npm run build` | Typecheck + build content script (IIFE) and popup → `dist/` |
+| `npm run dev` | Rebuild content script on change |
+| `npm test` | Vitest unit tests (detection heuristics, settings validation) |
+| `npm run icons` | Regenerate `public/icons/*.png` |
+| `npm run zip` | Build + create `language-filter-for-youtube-v<version>.zip` |
+
+## Versioning
+
+`package.json` is the single source of truth; `public/manifest.json` holds a
+`0.0.0` placeholder that the build stamps into `dist/manifest.json`. Release:
+`npm version patch && npm run zip`.
+
+## Known fragility
+
+Feed tile markup (`ytd-rich-item-renderer`), title and ⋮-menu selectors, and
+the localized "Not interested" menu-item labels are YouTube internals — all
+kept as constants at the top of `src/content/feed.ts` and
+`src/content/notInterested.ts` for easy fixing when YouTube ships changes.
+If the ⋮ menu can't be driven, the extension falls back to hiding the tile.

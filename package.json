@@ -1,0 +1,25 @@
+{
+  "name": "language-filter-for-youtube",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Chrome extension: automatically mark YouTube home-feed videos in selected languages as Not interested.",
+  "scripts": {
+    "build": "tsc --noEmit && vite build && vite build --mode popup",
+    "dev": "vite build --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "icons": "node scripts/generate-icons.ts",
+    "zip": "npm run build && node scripts/pack.ts"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.2.5",
+    "@types/node": "^26.1.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.0",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
