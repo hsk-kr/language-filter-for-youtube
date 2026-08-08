@@ -1,11 +1,19 @@
 # Language Filter for YouTube
 
-A Chrome extension that cleans languages you don't want out of your YouTube
-home feed: it detects each video's language from its title and automatically
-clicks **"Not interested"** for you — which actually teaches YouTube's
-recommendations, not just hides the tile (though a hide-only mode exists too).
+**Keep your native language out of your YouTube feed.** Built for immersion
+language learning: when you're trying to live in your target language,
+YouTube keeps tempting you back with videos in your mother tongue — and every
+click teaches it to recommend more of them.
 
-Built for the "my feed is full of videos in a language I don't watch" problem.
+This Chrome extension breaks that loop. It detects each home-feed video's
+language (title and channel name) and automatically clicks
+**"Not interested"** for you — which actually trains YouTube's
+recommendations, not just hides the tile (a hide-only mode exists too).
+Pick the languages you want gone; your feed gradually fills with your
+target language instead.
+
+Also works for the simpler case: "my feed is full of videos in a language I
+don't watch."
 
 ## How language detection works
 
