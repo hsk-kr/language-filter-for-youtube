@@ -52,7 +52,9 @@ function readSettingsFromUi(): Settings {
     if (box.checked && isLanguageCode(box.value)) targetLanguages.push(box.value);
   }
 
-  return { enabled, targetLanguages, mode };
+  const checkChannelName = mustGet<HTMLInputElement>("#check-channel").checked;
+
+  return { enabled, targetLanguages, mode, checkChannelName };
 }
 
 async function showAiStatus(el: HTMLElement): Promise<void> {
@@ -79,6 +81,7 @@ async function init(): Promise<void> {
   if (modeInput) modeInput.checked = true;
 
   renderLanguages(mustGet<HTMLElement>("#languages"), settings);
+  mustGet<HTMLInputElement>("#check-channel").checked = settings.checkChannelName;
 
   document.body.addEventListener("change", () => {
     void saveSettings(readSettingsFromUi());

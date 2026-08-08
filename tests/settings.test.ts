@@ -39,10 +39,19 @@ describe("validateSettings", () => {
     expect(settings.targetLanguages).toEqual(["ko", "ja"]);
   });
 
-  it("repairs invalid mode and enabled values", () => {
-    const settings = validateSettings({ enabled: "yes", mode: "obliterate" });
+  it("repairs invalid mode, enabled and checkChannelName values", () => {
+    const settings = validateSettings({
+      enabled: "yes",
+      mode: "obliterate",
+      checkChannelName: "maybe",
+    });
     expect(settings.enabled).toBe(DEFAULT_SETTINGS.enabled);
     expect(settings.mode).toBe(DEFAULT_SETTINGS.mode);
+    expect(settings.checkChannelName).toBe(DEFAULT_SETTINGS.checkChannelName);
+  });
+
+  it("defaults to checking channel names", () => {
+    expect(DEFAULT_SETTINGS.checkChannelName).toBe(true);
   });
 
   it("accepts a fully valid object", () => {
@@ -50,7 +59,13 @@ describe("validateSettings", () => {
       enabled: false,
       targetLanguages: ["ko"],
       mode: "hide",
+      checkChannelName: false,
     });
-    expect(settings).toEqual({ enabled: false, targetLanguages: ["ko"], mode: "hide" });
+    expect(settings).toEqual({
+      enabled: false,
+      targetLanguages: ["ko"],
+      mode: "hide",
+      checkChannelName: false,
+    });
   });
 });

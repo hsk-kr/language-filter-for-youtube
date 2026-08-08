@@ -11,6 +11,16 @@ const TITLE_SELECTORS = [
   "yt-formatted-string#video-title",
 ] as const;
 
+// The channel row. Order matters for the lockup layout: querySelector takes
+// the first metadata row, which is the channel name (later rows are
+// views/date and may contain localized UI text that must not be matched).
+const CHANNEL_SELECTORS = [
+  "ytd-channel-name #text a",
+  "ytd-channel-name #text",
+  "#channel-name a",
+  ".yt-content-metadata-view-model-wiz__metadata-text",
+] as const;
+
 const MENU_BUTTON_SELECTORS = [
   "ytd-menu-renderer yt-icon-button button",
   "ytd-menu-renderer button[aria-label]",
@@ -29,6 +39,15 @@ export function findTiles(): readonly HTMLElement[] {
 
 export function extractTitle(tile: HTMLElement): string | null {
   for (const selector of TITLE_SELECTORS) {
+    const el = tile.querySelector<HTMLElement>(selector);
+    const text = el?.textContent?.trim();
+    if (text) return text;
+  }
+  return null;
+}
+
+export function extractChannelName(tile: HTMLElement): string | null {
+  for (const selector of CHANNEL_SELECTORS) {
     const el = tile.querySelector<HTMLElement>(selector);
     const text = el?.textContent?.trim();
     if (text) return text;

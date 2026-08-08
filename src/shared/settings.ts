@@ -10,6 +10,9 @@ export interface Settings {
   readonly enabled: boolean;
   readonly targetLanguages: readonly LanguageCode[];
   readonly mode: FilterMode;
+  // Also match the channel name (script detection only — AI is too
+  // error-prone on names, e.g. "Kurzgesagt" would read as German).
+  readonly checkChannelName: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = Object.freeze({
@@ -18,6 +21,7 @@ export const DEFAULT_SETTINGS: Settings = Object.freeze({
   // explicitly chooses languages in the popup.
   targetLanguages: Object.freeze([]) as readonly LanguageCode[],
   mode: "not-interested",
+  checkChannelName: true,
 });
 
 export function validateSettings(raw: unknown): Settings {
@@ -41,5 +45,9 @@ export function validateSettings(raw: unknown): Settings {
     enabled: typeof src["enabled"] === "boolean" ? src["enabled"] : DEFAULT_SETTINGS.enabled,
     targetLanguages,
     mode,
+    checkChannelName:
+      typeof src["checkChannelName"] === "boolean"
+        ? src["checkChannelName"]
+        : DEFAULT_SETTINGS.checkChannelName,
   });
 }
