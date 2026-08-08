@@ -6,6 +6,7 @@ export const TILE_SELECTOR = "ytd-rich-item-renderer";
 
 const TITLE_SELECTORS = [
   "#video-title",
+  ".ytLockupMetadataViewModelTitle", // 2025+ lockup layout (verified live)
   "a.yt-lockup-metadata-view-model-wiz__title",
   "h3 a span",
   "yt-formatted-string#video-title",
@@ -15,10 +16,12 @@ const TITLE_SELECTORS = [
 // the first metadata row, which is the channel name (later rows are
 // views/date and may contain localized UI text that must not be matched).
 const CHANNEL_SELECTORS = [
+  ".ytContentMetadataViewModelMetadataText", // 2025+ lockup layout (verified live)
   "ytd-channel-name #text a",
   "ytd-channel-name #text",
   "#channel-name a",
   ".yt-content-metadata-view-model-wiz__metadata-text",
+  "a[href^='/@']", // channel-handle link, last resort
 ] as const;
 
 const MENU_BUTTON_SELECTORS = [
@@ -27,6 +30,9 @@ const MENU_BUTTON_SELECTORS = [
   "button-view-model button[aria-label]",
   "yt-icon-button#button button",
   "button[aria-label='More actions']",
+  // Lockup tiles carry exactly one aria-labeled button — the ⋮ menu
+  // (verified live); label text varies with the UI language.
+  "button[aria-label]",
 ] as const;
 
 export function isHomePath(pathname: string): boolean {
