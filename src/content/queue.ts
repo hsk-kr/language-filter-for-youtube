@@ -1,4 +1,4 @@
-// Sequential action queue: "Not interested" clicks open a shared global menu
+// Sequential action queue: recommendation actions open a shared global menu
 // popup, so they must never overlap — one at a time with a gap between.
 
 const GAP_BETWEEN_ACTIONS_MS = 700;
