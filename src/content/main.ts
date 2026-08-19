@@ -1,13 +1,14 @@
-// Entry point: watches the YouTube home feed, detects tile language, and
-// marks matching videos "Not interested" (or hides them, per settings).
+// Entry point: watches the YouTube Home and Shorts feeds, detects each
+// video's language, and applies the surface's recommendation action (or
+// hides the video, per settings).
 
 import { detectWithAi } from "../shared/ai";
 import { detectByScript } from "../shared/detect";
 import { anyNeedsAi, type LanguageCode } from "../shared/languages";
 import { loadSettings, watchSettings } from "../shared/storage";
 import { validateSettings, type Settings } from "../shared/settings";
-import { extractChannelName, extractTitle, findTiles, isHomePath } from "./feed";
-import { markNotInterested } from "./notInterested";
+import { extractChannelName, extractTitle, findTiles, isSupportedPath } from "./feed";
+import { applyRecommendationAction } from "./notInterested";
 import { createQueue } from "./queue";
 
 const CHECKED_ATTR = "data-lf-checked";
@@ -66,26 +67,27 @@ function filterTile(tile: HTMLElement, title: string, match: Match): void {
     return;
   }
   queue.push(async () => {
-    const ok = await markNotInterested(tile);
+    const ok = await applyRecommendationAction(tile);
     if (!ok) hideTile(tile); // menu not found — at least remove it visually
   });
 }
 
-function processTile(tile: HTMLElement): void {
-  const title = extractTitle(tile);
-  if (!title) return; // tile still rendering; a later scan will catch it
-  tile.setAttribute(CHECKED_ATTR, "1");
+function processTile(tile: HTMLElement, title: string): void {
+  tile.setAttribute(CHECKED_ATTR, title);
   void findMatch(tile, title).then((match) => {
-    if (match) filterTile(tile, title, match);
+    // A Shorts renderer can be reused while AI detection is in flight.
+    if (match && extractTitle(tile) === title) filterTile(tile, title, match);
   });
 }
 
 function scan(): void {
   if (!state.settings.enabled) return;
   if (state.settings.targetLanguages.length === 0) return;
-  if (!isHomePath(location.pathname)) return;
-  for (const tile of findTiles()) {
-    if (!tile.hasAttribute(CHECKED_ATTR)) processTile(tile);
+  if (!isSupportedPath(location.pathname)) return;
+  for (const tile of findTiles(location.pathname)) {
+    const title = extractTitle(tile);
+    if (!title) continue; // metadata still rendering; a later scan will catch it
+    if (tile.getAttribute(CHECKED_ATTR) !== title) processTile(tile, title);
   }
 }
 
@@ -116,7 +118,20 @@ async function init(): Promise<void> {
   new MutationObserver(scheduleScan).observe(document.body, {
     childList: true,
     subtree: true,
+    // Shorts changes the active reel in-place rather than inserting a new
+    // page, so observe its active-state attributes as well as child nodes.
+    attributes: true,
+    attributeFilter: ["is-active", "active"],
   });
+  const pageTitle = document.querySelector("title");
+  if (pageTitle) {
+    // The original Shorts title can arrive after the translated reel title.
+    new MutationObserver(scheduleScan).observe(pageTitle, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  }
   window.addEventListener("yt-navigate-finish", scheduleScan);
 
   scan();

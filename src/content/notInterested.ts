@@ -1,32 +1,63 @@
-// Clicks through a tile's ⋮ menu and selects "Not interested" — the action
-// that actually teaches YouTube's recommendations, unlike merely hiding.
-// Flow verified live on the 2025+ lockup layout: the button opens a shared
-// tp-yt-iron-dropdown whose items load over the network on first open.
+// Clicks through a video's ⋮ menu and selects the recommendation action
+// available on that surface: Home has "Not interested"; Shorts instead has
+// "Don't recommend this channel". Both actions teach YouTube's feed.
 
-import { findMenuButton } from "./feed";
+import { findMenuButton, isShortsTile } from "./feed";
 
-// The menu renders in the user's UI language; match a lowercase substring.
-const NOT_INTERESTED_LABELS = [
-  "not interested",
-  "관심 없음",
-  "興味なし",
-  "不感兴趣",
-  "沒有興趣",
-  "не интересует",
-  "no me interesa",
-  "não tenho interesse",
-  "ça ne m'intéresse pas",
-  "kein interesse",
-  "non mi interessa",
-] as const;
+export type RecommendationAction = "not-interested" | "do-not-recommend-channel";
 
-// Items live inside the global popup container — never search the whole
-// document, or sidebar entries (also role=menuitem-ish) could match.
-const DROPDOWN_SELECTOR = "ytd-popup-container tp-yt-iron-dropdown";
-const MENU_ITEM_SELECTOR =
-  "yt-list-item-view-model, ytd-menu-service-item-renderer, tp-yt-paper-item";
+// Menus render in the user's UI language; match lowercase substrings. Keep
+// these aligned with the languages already covered by the extension's Home
+// menu automation.
+const ACTION_LABELS: Readonly<Record<RecommendationAction, readonly string[]>> = {
+  "not-interested": [
+    "not interested",
+    "관심 없음",
+    "興味なし",
+    "不感兴趣",
+    "沒有興趣",
+    "не интересует",
+    "no me interesa",
+    "não tenho interesse",
+    "ça ne m'intéresse pas",
+    "kein interesse",
+    "non mi interessa",
+  ],
+  "do-not-recommend-channel": [
+    "don't recommend this channel",
+    "do not recommend this channel",
+    "채널 추천 안함",
+    "おすすめに表示しない",
+    "チャンネルをおすすめに表示しない",
+    "不推荐此频道",
+    "不要推薦這個頻道",
+    "не рекомендовать видео с этого канала",
+    "no recomendar este canal",
+    "não recomendar o canal",
+    "ne pas recommander la chaîne",
+    "keine videos von diesem kanal empfehlen",
+    "non consigliare il canale",
+  ],
+};
 
-// First open fetches menu contents over the network; be generous.
+// Items live inside YouTube's global popup container. Restricting the search
+// to a visible popup avoids matching similarly structured sidebar entries.
+const POPUP_SELECTOR = [
+  "ytd-popup-container tp-yt-iron-dropdown",
+  "ytd-popup-container ytd-menu-popup-renderer",
+  "ytd-popup-container yt-sheet-view-model",
+  "ytd-popup-container [role='menu']",
+  ".html5-video-player .ytp-popup",
+].join(", ");
+const MENU_ITEM_SELECTOR = [
+  "yt-list-item-view-model",
+  "ytd-menu-service-item-renderer",
+  "tp-yt-paper-item",
+  "[role='menuitem']",
+  ".ytp-menuitem",
+].join(", ");
+
+// First open can fetch menu contents over the network; be generous.
 const MENU_WAIT_TIMEOUT_MS = 4000;
 const MENU_POLL_INTERVAL_MS = 150;
 
@@ -34,47 +65,67 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function openDropdown(): HTMLElement | null {
-  const dropdown = document.querySelector<HTMLElement>(DROPDOWN_SELECTOR);
-  if (!dropdown) return null;
-  // A closed dropdown keeps its (cached) items in the DOM at display:none —
-  // computed display is the reliable open/closed signal.
-  return getComputedStyle(dropdown).display !== "none" ? dropdown : null;
+function isVisible(el: HTMLElement): boolean {
+  const rect = el.getBoundingClientRect();
+  return getComputedStyle(el).display !== "none" && rect.width > 0 && rect.height > 0;
 }
 
-function findNotInterestedItem(): HTMLElement | null {
-  const dropdown = openDropdown();
-  if (!dropdown) return null;
-  for (const candidate of dropdown.querySelectorAll<HTMLElement>(MENU_ITEM_SELECTOR)) {
-    if (candidate.getBoundingClientRect().width === 0) continue; // hidden
-    const text = candidate.textContent?.trim().toLowerCase() ?? "";
-    if (text && NOT_INTERESTED_LABELS.some((label) => text.includes(label))) {
+function openPopup(): HTMLElement | null {
+  for (const popup of document.querySelectorAll<HTMLElement>(POPUP_SELECTOR)) {
+    if (isVisible(popup)) return popup;
+  }
+  return null;
+}
+
+function findActionItemIn(root: ParentNode, action: RecommendationAction): HTMLElement | null {
+  for (const candidate of root.querySelectorAll<HTMLElement>(MENU_ITEM_SELECTOR)) {
+    if (!isVisible(candidate)) continue;
+    const text = (candidate.textContent ?? "")
+      .trim()
+      .toLowerCase()
+      .replaceAll("’", "'")
+      .replaceAll("‘", "'");
+    if (text && ACTION_LABELS[action].some((label) => text.includes(label))) {
       return candidate;
     }
   }
   return null;
 }
 
+function findActionItem(action: RecommendationAction): HTMLElement | null {
+  const popup = openPopup();
+  const inPopup = popup ? findActionItemIn(popup, action) : null;
+  // Shorts menu experiments sometimes mount beside the player instead of in
+  // ytd-popup-container. The action label is unique, so a visible global
+  // fallback is safer than depending on one popup host.
+  return inPopup ?? findActionItemIn(document, action);
+}
+
 function closeOpenMenu(menuButton: HTMLElement): void {
-  // The button toggles; clicking again closes the (still-open) menu. An
-  // open dropdown also locks page scrolling, so this must not be skipped.
-  if (openDropdown()) menuButton.click();
+  // The button toggles; clicking again closes a still-open menu. Open menus
+  // also lock scrolling, so dispatch Escape as a second line of cleanup.
+  if (openPopup()) menuButton.click();
   document.dispatchEvent(
     new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true })
   );
 }
 
-// Returns true when "Not interested" was clicked; false when the menu or the
-// item couldn't be found (the caller falls back to hiding the tile).
-export async function markNotInterested(tile: HTMLElement): Promise<boolean> {
+export function recommendationActionForTile(tile: HTMLElement): RecommendationAction {
+  return isShortsTile(tile) ? "do-not-recommend-channel" : "not-interested";
+}
+
+// Returns true when the appropriate recommendation action was clicked; false
+// when the menu or item couldn't be found (the caller falls back to hiding).
+export async function applyRecommendationAction(tile: HTMLElement): Promise<boolean> {
   const menuButton = findMenuButton(tile);
   if (!menuButton) return false;
 
+  const action = recommendationActionForTile(tile);
   menuButton.click();
 
   const deadline = performance.now() + MENU_WAIT_TIMEOUT_MS;
   while (performance.now() < deadline) {
-    const item = findNotInterestedItem();
+    const item = findActionItem(action);
     if (item) {
       item.click();
       return true;

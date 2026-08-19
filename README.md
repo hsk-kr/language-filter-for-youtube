@@ -5,11 +5,12 @@ language learning: when you're trying to live in your target language,
 YouTube keeps tempting you back with videos in your mother tongue — and every
 click teaches it to recommend more of them.
 
-This Chrome extension breaks that loop. It detects each home-feed video's
-language (title and channel name) and automatically clicks
-**"Not interested"** for you — which actually trains YouTube's
-recommendations, not just hides the tile (a hide-only mode exists too).
-Pick the languages you want gone; your feed gradually fills with your
+This Chrome extension breaks that loop. It detects each video's language
+(title and channel name) on Home and Shorts, then automatically clicks the
+recommendation action YouTube offers: **"Not interested"** on Home and
+**"Don't recommend this channel"** on Shorts. Those actions train YouTube's
+recommendations instead of only hiding the video (a hide-only mode exists
+too). Pick the languages you want gone; your feed gradually fills with your
 target language instead.
 
 Also works for the simpler case: "my feed is full of videos in a language I
@@ -23,7 +24,8 @@ Three checks per video, fastest first:
    Japanese, Chinese, Russian, Arabic, Hindi, Thai and Hebrew are identified
    by their Unicode script with a ratio + dense-run heuristic, so mixed
    titles like "[ENG SUB] 김치찌개 만들기 Kimchi Stew Recipe" still match.
-   No model, no network, no ambiguity.
+   No model, no network, no ambiguity. On Shorts, the original browser-tab
+   title is preferred because YouTube may translate the visible reel title.
 2. **Title, Chrome's built-in Language Detector API (on-device AI, Chrome
    138+).** Used only for Latin-alphabet languages (Spanish, French, German,
    Portuguese, Italian) that script analysis can't distinguish. The model
@@ -50,13 +52,14 @@ npm run build
 ## Usage
 
 - Configure via the toolbar popup: enable/disable, pick languages, toggle
-  channel-name matching, and choose the action — **"Not interested"**
-  (default; trains the algorithm) or **hide only**.
-- Runs on the **Home feed** (`youtube.com/`) only.
+  channel-name matching, and choose the action — **train recommendations**
+  (default) or **hide only**.
+- Runs on the **Home feed** (`youtube.com/`) and individual **Shorts** pages
+  (`youtube.com/shorts/...`).
 - Menu actions run **one tile at a time with a 700ms gap** (YouTube's ⋮
   menu is a shared popup), so on a match-heavy feed removals appear
-  progressively. Each removed video shows YouTube's own "Video removed"
-  card with **Undo** — false positives are one click to restore.
+  progressively. Home removals show YouTube's own "Video removed" card with
+  **Undo** — false positives are one click to restore.
 - Matched tiles are logged to the DevTools console with a running count and
   the signal that fired (`ko via title` / `ko via channel`).
 - Changes in the popup apply immediately, no reload needed.
@@ -79,16 +82,15 @@ npm run build
 
 ## Known fragility & gaps
 
-Feed tile markup, title/channel/⋮-menu selectors, and the localized "Not
-interested" menu-item labels are YouTube internals — all kept as constants
-at the top of `src/content/feed.ts` and `src/content/notInterested.ts` for
-easy fixing when YouTube ships changes. Selectors were verified against the
-live 2025 "lockup" layout (camelCase view-model classes) in August 2026,
-with the older kebab-case selectors kept as fallbacks. If the ⋮ menu can't
-be driven, the extension falls back to hiding the tile.
+Home/Shorts renderer markup, title/channel/⋮-menu selectors, and localized
+recommendation-action labels are YouTube internals — all kept as constants
+in `src/content/feed.ts` and `src/content/notInterested.ts` for easy fixing
+when YouTube ships changes. Home selectors were verified against the live
+2025 "lockup" layout (camelCase view-model classes) in August 2026, with
+older kebab-case selectors kept as fallbacks. If the ⋮ menu can't be driven,
+the extension falls back to hiding the video.
 
 Not covered (yet):
 
-- The **Shorts shelf** uses different markup; Shorts aren't filtered.
 - Videos whose only visible Korean is **inside the thumbnail image** (English
   title, English channel name) are undetectable from the DOM.

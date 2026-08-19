@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Language Filter for YouTube",
   "version": "0.0.0",
-  "description": "Keep your native language out of your YouTube feed: auto-marks videos in chosen languages as Not interested. For immersion learners.",
+  "description": "Keep chosen languages out of YouTube Home and Shorts recommendations. For immersion learners.",
   "permissions": ["storage"],
   "icons": {
     "16": "icons/icon16.png",
